@@ -1,0 +1,4 @@
+{
+    "prettier.printWidth": 200,
+    "svelte.plugin.svelte.format.config.printWidth": 200
+}

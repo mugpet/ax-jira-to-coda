@@ -1,0 +1,16 @@
+{
+  "name": "ps-ax",
+  "version": "1.0.0",
+  "description": "",
+  "main": "load-ax.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "^2.6.6",
+    "node-xlsx": "^0.17.2",
+    "yargs": "^17.3.1"
+  }
+}

@@ -1,0 +1,1 @@
+node load-ax --ax-file "C:\\code\\nodejs\\danbolig-project\\Project transactions_RSJ_serveropgradering.xlsx"  --coda-token "12ab4adf-e79f-4a87-b6b5-493314c8f9ff" --page-id "2zL1hjMClo" --table-id "grid-akTKDBf_ad" 
