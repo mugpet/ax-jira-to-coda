@@ -155,7 +155,7 @@ const updateCodaTable = (pageId, tableId, rows) => {
 
 
 const syncjiraIssuesData = async (pageId, boardId, tableId) => {
-  const jiraData = await getJiraData(boardId, "issue", 'maxResults=1000&fields="key,status,resolution,assignee,creator,project,description,summary,epic,issuetype,customfield_10010,customfield_10108,customfield_10109"')
+  const jiraData = await getJiraData(boardId, "issue", 'maxResults=1000&fields="key,status,resolution,assignee,creator,project,description,summary,epic,issuetype,customfield_10010,customfield_10108,customfield_10109,priority,"')
   
   console.log("JiraData:", JSON.stringify(jiraData.issues[1], null, 2)) 
 
@@ -179,11 +179,34 @@ const syncjiraIssuesData = async (pageId, boardId, tableId) => {
         { column: "Issue Type", value: d.fields.issuetype && d.fields.issuetype.name ? d.fields.issuetype.name : "" },        
         { column: "Estimated Hours", value: d.fields.customfield_10108 ? d.fields.customfield_10108 : "" },        
         { column: "Revised Hours", value: d.fields.customfield_10109 ? d.fields.customfield_10109 : "" },        
+        { column: "Priority", value: d.fields.priority && d.fields.priority.name  ? d.fields.priority.name : "" },        
         { column: "EpicKey", value: d.fields.epic && d.fields.epic.key ? d.fields.epic.key : "" },
         { column: "JiraUrl", value: jiraUrl },
       ],
     }
   })
+
+  // Add 'Andet' for hours without jira
+  rows.push ({ cells: [
+    // { column: "id", value: d.id },
+    // { column: "key", value: d.key },
+    // { column: "self", value: d.self },
+    // { column: "name", value: d.fields && d.fields.customfield_10010 ? d.fields.customfield_10010 : "" },
+    { column: "summary", value: "N/A" },
+    // { column: "description", value: d.fields && d.fields.description ? d.fields.description : "" },
+    // { column: "Assignee", value: d.fields.assignee && d.fields.assignee.displayName ? d.fields.assignee.displayName : "" },
+    // { column: "Assignee emailAddress", value: d.fields.assignee && d.fields.assignee.emailAddress ? d.fields.assignee.emailAddress : "" },
+    // { column: "Status", value: d.fields.status && d.fields.status.name ? d.fields.status.name : "" },
+    // { column: "Creator", value: d.fields.creator && d.fields.creator.displayName ? d.fields.creator.displayName : "" },        
+    { column: "Issue Type", value: "Item" },        
+    // { column: "Estimated Hours", value: d.fields.customfield_10108 ? d.fields.customfield_10108 : "" },        
+    // { column: "Revised Hours", value: d.fields.customfield_10109 ? d.fields.customfield_10109 : "" },        
+    // { column: "Priority", value: d.fields.priority && d.fields.priority.name  ? d.fields.priority.name : "" },        
+    // { column: "EpicKey", value: d.fields.epic && d.fields.epic.key ? d.fields.epic.key : "" },
+    // { column: "JiraUrl", value: jiraUrl },
+  ]}
+)
+
 
   console.log("1st row:", JSON.stringify(rows[0],null,2))
 
