@@ -28,7 +28,7 @@ const options = {
     description: 'pending og done',
     type: 'string'},
 }
-
+ 
 
 const argv = yargs
   .command('upload', 'Will upload AX .xlsx file to Coda.io', {
@@ -54,7 +54,7 @@ const columns = obj[0].data[0]
 const data = obj[0].data.slice(1)
 
 // console.log('data:', data)
-console.table(columns)
+// console.table(columns)
 
 
 const rows = data.map((d) => {
@@ -187,38 +187,102 @@ const rows = data.map((d) => {
 
 
 
-const updatecoda = () => {
-// get table list
-fetch(`https://coda.io/apis/v1/docs/${argv.pageId}/tables/${argv.tableId}/rows`, {
-  method: 'GET',
-  headers: {
-    'Content-Type': 'application/json',
-    authorization: `Bearer ${argv.codaToken}`,
-  },
-})
-  .then((r) => r.json())
-  .then((res) => {
-    // console.log("res:", res)
-    const data = [...res.items]
-    const rowsToDelete = data.map((r) => {
-      return r.id
-    })
+const updatecoda = async () => {
+  console.log("UPDATE CODA")
 
-    const content = {
-      rowIds: rowsToDelete,
-    }
 
-    console.log(JSON.stringify(content))
+ // DELETE EXISTING ROWS IN CODA TABLE
+let Done = false
+let nextPageToken = ""
+let allRowsToDelete = []
+while (!Done) {
+  const url = nextPageToken == "" 
+  ? `https://coda.io/apis/v1/docs/${argv.pageId}/tables/${argv.tableId}/rows`
+  :`https://coda.io/apis/v1/docs/${argv.pageId}/tables/${argv.tableId}/rows?pageToken=${nextPageToken}`
 
-    fetch(`https://coda.io/apis/v1/docs/${argv.pageId}/tables/${argv.tableId}/rows`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        authorization: `Bearer ${argv.codaToken}`,
-      },
-      body: JSON.stringify(content),
-    }).then((r) => {
-      console.log('delete order sent!')
+  // Get rows
+  const rowsToDeleteRes = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      authorization: `Bearer ${argv.codaToken}`,
+    },
+  })
+
+  const rowsToDeleteData = await rowsToDeleteRes.json()
+  const data = [...rowsToDeleteData.items]
+  const rowsToDelete = data.map((r) => {
+    return r.id
+  })
+
+
+  allRowsToDelete = [...allRowsToDelete, ...rowsToDelete]
+
+  console.log('rowsToDeleteRes:', rowsToDeleteData.nextPageToken)
+  // Are there move items to delete?
+  nextPageToken = rowsToDeleteData.nextPageToken
+  Done = rowsToDeleteData.nextPageToken != "" && rowsToDeleteData.nextPageToken != null && rowsToDeleteData.nextPageToken != undefined ?  false : true
+}
+
+console.log("ALLE ROWS to delete", allRowsToDelete)
+console.log("ALLE ROWS to delete COUND:", allRowsToDelete.length)
+
+// Send delete order
+Done = false
+let toBeDeleted = [...allRowsToDelete]
+let cutSize = 100
+while (!Done) {
+  
+  let end = 0;
+  // tak a cut from the toBeDelete list
+  if (toBeDeleted.length >= cutSize) {
+    end = cutSize
+  } else {
+    end = toBeDeleted.length
+  }
+
+  let deleteChunk = []
+  if (end > 0) {
+     console.log("CUT SIZE:", end*-1)
+    deleteChunk = toBeDeleted.slice(end * -1,)
+    toBeDeleted = toBeDeleted.slice(0,end * -1)
+   } 
+
+  // delete rows
+  const content = {
+    rowIds: [...deleteChunk],
+  }
+
+  console.log("COUNT toBeDeleted:", toBeDeleted.length)
+  console.log("COUNT deleteChunk:", deleteChunk.length)
+  console.log(JSON.stringify(toBeDeleted))
+  // console.log(JSON.stringify(content))
+
+  const deleteRowsRes = await fetch(`https://coda.io/apis/v1/docs/${argv.pageId}/tables/${argv.tableId}/rows`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      authorization: `Bearer ${argv.codaToken}`,
+    },
+    body: JSON.stringify(content),
+  })
+  
+
+
+  if (deleteRowsRes.ok) {
+    console.log('delete order sent!')
+    console.log("res:", deleteRowsRes)
+  } else {
+    console.log('DELETE error:', deleteRowsRes)
+  }
+
+  // console.log('rowsToDeleteRes:', rowsToDeleteData)
+
+  Done = toBeDeleted.length >0 ? false: true
+
+}
+
+  
 
       let flat = []
       rows.forEach(k => {
@@ -230,7 +294,7 @@ fetch(`https://coda.io/apis/v1/docs/${argv.pageId}/tables/${argv.tableId}/rows`,
         rows: flat,
       }
 
-      console.log("flat:", JSON.stringify(content, null, 2))
+      // console.log("flat:", JSON.stringify(content, null, 2))
 
       const url = `https://coda.io/apis/v1/docs/${argv.pageId}/tables/${argv.tableId}/rows?valueFormat=simple&useColumnNames=true`
       fetch(url, {
@@ -245,9 +309,9 @@ fetch(`https://coda.io/apis/v1/docs/${argv.pageId}/tables/${argv.tableId}/rows`,
         
         console.log('upsert done!')
       })
-    })
-  })
-}
+
+
+    }
 
 
 const appendToCoda = () => {
@@ -281,5 +345,5 @@ const appendToCoda = () => {
 }
 
 
-
+console.log("argv.axType:", argv.axType)
  argv.axType == "pending" ? appendToCoda(): updatecoda() 
