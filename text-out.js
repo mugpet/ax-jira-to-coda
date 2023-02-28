@@ -56,7 +56,7 @@ console.log(description)
 
 let objList = []
 if (description != '') {
-  const foundJiraCodes = description.match(/(?:[a-zA-Z]*)-\d{1,}[\s|-]\d{1,3}([.|,]?\d{1,2})?h/gm)
+  const foundJiraCodes = description.match(/(?:[a-zA-Z]{1,4})-\d{1,}(\s+|-)\d{1,3}([.,]?\d{1,2})?h/gm)
 
   objList =
     foundJiraCodes && foundJiraCodes.length > 0

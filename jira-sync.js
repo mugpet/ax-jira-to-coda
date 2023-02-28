@@ -3,8 +3,7 @@ var fetch = require("node-fetch")
 const yargs = require("yargs")
 const fs = require("fs")
 
-process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0; // works - disables SSL certificate check (localhost)
-
+process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0 // works - disables SSL certificate check (localhost)
 
 const options = {
   "jira-token": {
@@ -70,11 +69,16 @@ console.log(argv)
 const jiraToken = argv.jiraToken // 'NjI3NDk1NzMwNDcxOlHf3oyuXlRCuiwxzd0lPdUAS4ja'
 const codaToken = argv.codaToken // '12ab4adf-e79f-4a87-b6b5-493314c8f9ff' // RSJ
 
+
+
+
+
+
 const getJiraData = async (boardId, type, params) => {
   const url = `https://support.innofactor.com/rest/agile/1.0/board/${boardId}/${type}?${params}`
   const headers = {
     "Content-Type": "application/json",
-    authorization: `Bearer ${jiraToken}`
+    authorization: `Bearer ${jiraToken}`,
   }
 
   const dataResp = await fetch(url, {
@@ -82,13 +86,19 @@ const getJiraData = async (boardId, type, params) => {
     headers,
     rejectUnauthorized: false,
     requestCert: true,
-    agent: false
+    agent: false,
   })
 
   const data = await dataResp.json()
 
   return data
 }
+
+
+
+
+
+
 
 const updateCodaTable = (pageId, tableId, rows) => {
   // get table list
@@ -97,7 +107,7 @@ const updateCodaTable = (pageId, tableId, rows) => {
     headers: {
       "Content-Type": "application/json",
       authorization: `Bearer ${codaToken}`,
-    }
+    },
   })
     .then((r) => r.json())
     .then((res) => {
@@ -153,16 +163,25 @@ const updateCodaTable = (pageId, tableId, rows) => {
     })
 }
 
-
 const syncjiraIssuesData = async (pageId, boardId, tableId) => {
-  const jiraData = await getJiraData(boardId, "issue", 'maxResults=1000&fields="key,status,resolution,assignee,creator,project,description,summary,epic,issuetype,customfield_10010,customfield_10108,customfield_10109,priority,"')
-  
-  console.log("JiraData:", JSON.stringify(jiraData.issues[1], null, 2)) 
+  const jiraData = await getJiraData(
+    boardId,
+    "issue",
+    'maxResults=1000&fields="key,status,resolution,assignee,creator,project,description,summary,epic,issuetype,customfield_10010,customfield_10108,customfield_10109,priority,components,"'
+  )
+
+  console.log("JiraData:", JSON.stringify(jiraData.issues[1], null, 2))
 
   const rows = jiraData.issues.map((d) => {
     // console.log("issue type:", d.fields.issuetype && d.fields.issuetype.name)
     // const jiraUrl = `https://support.innofactor.com/secure/RapidBoard.jspa?rapidView=${boardId}&view=detail&selectedIssue=${d.key}`
     const jiraUrl = `https://support.innofactor.com/browse/${d.key}`
+
+
+    // "self": "https://support.innofactor.com/rest/api/2/component/10501",
+		// 				"id": "10501",
+		// 				"name": "Fakturering-Drift"
+    const component = d.fields.components && d.fields.components.length >0 ? d.fields.components[0].name : ""
 
     return {
       cells: [
@@ -175,64 +194,92 @@ const syncjiraIssuesData = async (pageId, boardId, tableId) => {
         { column: "Assignee", value: d.fields.assignee && d.fields.assignee.displayName ? d.fields.assignee.displayName : "" },
         { column: "Assignee emailAddress", value: d.fields.assignee && d.fields.assignee.emailAddress ? d.fields.assignee.emailAddress : "" },
         { column: "Status", value: d.fields.status && d.fields.status.name ? d.fields.status.name : "" },
-        { column: "Creator", value: d.fields.creator && d.fields.creator.displayName ? d.fields.creator.displayName : "" },        
-        { column: "Issue Type", value: d.fields.issuetype && d.fields.issuetype.name ? d.fields.issuetype.name : "" },        
-        { column: "Estimated Hours", value: d.fields.customfield_10108 ? d.fields.customfield_10108 : "" },        
-        { column: "Revised Hours", value: d.fields.customfield_10109 ? d.fields.customfield_10109 : "" },        
-        { column: "Priority", value: d.fields.priority && d.fields.priority.name  ? d.fields.priority.name : "" },        
+        { column: "Creator", value: d.fields.creator && d.fields.creator.displayName ? d.fields.creator.displayName : "" },
+        { column: "Issue Type", value: d.fields.issuetype && d.fields.issuetype.name ? d.fields.issuetype.name : "" },
+        { column: "Estimated Hours", value: d.fields.customfield_10108 ? d.fields.customfield_10108 : "" },
+        { column: "Revised Hours", value: d.fields.customfield_10109 ? d.fields.customfield_10109 : "" },
+        { column: "Priority", value: d.fields.priority && d.fields.priority.name ? d.fields.priority.name : "" },
         { column: "EpicKey", value: d.fields.epic && d.fields.epic.key ? d.fields.epic.key : "" },
         { column: "JiraUrl", value: jiraUrl },
+        { column: "Component", value: component },
       ],
     }
   })
 
   // Add 'Andet' for hours without jira
-  rows.push ({ cells: [
-    // { column: "id", value: d.id },
-    // { column: "key", value: d.key },
-    // { column: "self", value: d.self },
-    // { column: "name", value: d.fields && d.fields.customfield_10010 ? d.fields.customfield_10010 : "" },
-    { column: "summary", value: "Andet" },
-    // { column: "description", value: d.fields && d.fields.description ? d.fields.description : "" },
-    // { column: "Assignee", value: d.fields.assignee && d.fields.assignee.displayName ? d.fields.assignee.displayName : "" },
-    // { column: "Assignee emailAddress", value: d.fields.assignee && d.fields.assignee.emailAddress ? d.fields.assignee.emailAddress : "" },
-    // { column: "Status", value: d.fields.status && d.fields.status.name ? d.fields.status.name : "" },
-    // { column: "Creator", value: d.fields.creator && d.fields.creator.displayName ? d.fields.creator.displayName : "" },        
-    { column: "Issue Type", value: "Element" },        
-    // { column: "Estimated Hours", value: d.fields.customfield_10108 ? d.fields.customfield_10108 : "" },        
-    // { column: "Revised Hours", value: d.fields.customfield_10109 ? d.fields.customfield_10109 : "" },        
-    // { column: "Priority", value: d.fields.priority && d.fields.priority.name  ? d.fields.priority.name : "" },        
-    // { column: "EpicKey", value: d.fields.epic && d.fields.epic.key ? d.fields.epic.key : "" },
-    // { column: "JiraUrl", value: jiraUrl },
-  ]}
-)
+  rows.push({
+    cells: [
+      // { column: "id", value: d.id },
+      // { column: "key", value: d.key },
+      // { column: "self", value: d.self },
+      // { column: "name", value: d.fields && d.fields.customfield_10010 ? d.fields.customfield_10010 : "" },
+      { column: "summary", value: "Andet" },
+      // { column: "description", value: d.fields && d.fields.description ? d.fields.description : "" },
+      // { column: "Assignee", value: d.fields.assignee && d.fields.assignee.displayName ? d.fields.assignee.displayName : "" },
+      // { column: "Assignee emailAddress", value: d.fields.assignee && d.fields.assignee.emailAddress ? d.fields.assignee.emailAddress : "" },
+      // { column: "Status", value: d.fields.status && d.fields.status.name ? d.fields.status.name : "" },
+      // { column: "Creator", value: d.fields.creator && d.fields.creator.displayName ? d.fields.creator.displayName : "" },
+      { column: "Issue Type", value: "Element" },
+      // { column: "Estimated Hours", value: d.fields.customfield_10108 ? d.fields.customfield_10108 : "" },
+      // { column: "Revised Hours", value: d.fields.customfield_10109 ? d.fields.customfield_10109 : "" },
+      // { column: "Priority", value: d.fields.priority && d.fields.priority.name  ? d.fields.priority.name : "" },
+      // { column: "EpicKey", value: d.fields.epic && d.fields.epic.key ? d.fields.epic.key : "" },
+      // { column: "JiraUrl", value: jiraUrl },
+    ],
+  })
 
-
-  console.log("1st row:", JSON.stringify(rows[0],null,2))
+  console.log("1st row:", JSON.stringify(rows[0], null, 2))
 
   if (argv.jsonFile) {
     // create for file save
-    const fileRows = jiraData.issues
-    .filter(i => i.fields && i.fields.issuetype.name == "Epic")
-    .map((d) => {
-      return {
-        "key":  d.key,
-        "self": d.self,
-        "status": d.fields.status && d.fields.status.name ? d.fields.status.name : "",
-        "name": d.fields && d.fields.customfield_10010 ? d.fields.customfield_10010 : "",
-        "summary": d.fields && d.fields.summary ? d.fields.summary : "",
-        "description": d.fields && d.fields.description ? d.fields.description : "",
-        "estimatedHours":  d.fields.customfield_10108 ? d.fields.customfield_10108 : "",
-        "revisedHours":  d.fields.customfield_10109 ? d.fields.customfield_10109 : ""
-      }
-    })
+    const fileRows_epics = jiraData.issues
+      .filter((i) => i.fields && i.fields.issuetype.name == "Epic")
+      .map((d) => {
+        const status = d.fields.status && d.fields.status.name ? d.fields.status.name : ""
+        const assignee = d.fields.assignee && d.fields.assignee.displayName ? d.fields.assignee.displayName : ""
+
+        return {
+          key: d.key,
+          self: d.self,
+          status: status,
+          name: d.fields && d.fields.customfield_10010 ? d.fields.customfield_10010 + "|" + status +"|" + assignee: "",
+          summary: d.fields && d.fields.summary ? d.fields.summary : "",
+          description: d.fields && d.fields.description ? d.fields.description : "",
+          estimatedHours: d.fields.customfield_10108 ? d.fields.customfield_10108 : "",
+          revisedHours: d.fields.customfield_10109 ? d.fields.customfield_10109 : "",
+          Assignee: assignee
+        }
+      })
 
     // save to file
-    fs.writeFileSync(argv.jsonFile, JSON.stringify(fileRows))
+    fs.writeFileSync(argv.jsonFile + "_Epics.json", JSON.stringify(fileRows_epics))
+
+
+    // Get all Issues but not Epics
+    const fileRows = jiraData.issues
+      .filter((i) => i.fields && i.fields.issuetype.name !== "Epic")
+      .map((d) => {
+        const status = d.fields.status && d.fields.status.name ? d.fields.status.name : ""
+        const assignee = d.fields.assignee && d.fields.assignee.displayName ? d.fields.assignee.displayName : ""
+
+        return {
+          name:  d.fields && d.fields.summary ? d.fields.summary + "|" + status +"|" + assignee: "",
+          key: d.key,
+          self: d.self,
+          status: status,
+          summary: d.fields && d.fields.summary ? d.fields.summary : "",
+          epic_summary: d.fields && d.fields.epic && d.fields.epic.summary ? d.fields.epic.summary : "",
+          description: d.fields && d.fields.description ? d.fields.description : "",
+          estimatedHours: d.fields.customfield_10108 ? d.fields.customfield_10108 : "",
+          revisedHours: d.fields.customfield_10109 ? d.fields.customfield_10109 : "",
+          Assignee: assignee
+        }
+      })
+
+    // save to file
+    fs.writeFileSync(argv.jsonFile + "_Issues.json" , JSON.stringify(fileRows))
+
   }
-
-
-
 
   updateCodaTable(pageId, tableId, rows)
 }
